@@ -2,8 +2,8 @@
 Ansible deployment of solr with hydra schema on Ubuntu 14.04
 
 ## Vagrant test :
-*For Vagrant test environment, install Vagrant, Ansible and Virtualbox*
-*Vagrant uses "hostmanager" plugin. Before running, install with: `vagrant plugin install vagrant-hostmanager`*
+*For Vagrant test environment, install Vagrant, Ansible and Virtualbox.*
+*Vagrant uses "hostmanager" plugin. Before running, install with: `vagrant plugin install vagrant-hostmanager`.*
 
 To spin up solr VM, run:
 
