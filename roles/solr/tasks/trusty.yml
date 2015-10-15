@@ -1,0 +1,73 @@
+# see also http://mvnrepository.com/artifact/org.apache.solr/solr/${solr_version}
+---
+#install java and tomcat
+- include: java.yml
+- include: tomcat.yml
+
+- name: ensure /opt/src directory exists
+  file: path=/opt/src state=directory
+
+- name: ensure /opt/build directory exists
+  file: path=/opt/build state=directory
+
+- name: check variable solr_version is set
+  fail: msg="Please set 'solr_version' variable in the playbook"
+  when: solr_version is not defined
+
+- name: download solr
+  get_url: url="{{ item }}" dest=/opt/src/solr-{{solr_version}}.tgz
+  with_items:
+   - "http://archive.apache.org/dist/lucene/solr/{{ solr_version }}/solr-{{ solr_version }}.tgz"
+
+- name: ensure directory /opt/solr/production exists
+  file: path=/opt/solr/production state=directory owner=tomcat{{ tomcat_version }} group=tomcat{{ tomcat_version }}
+
+- name: ensure directory /opt/solr/production/collection1/data/index exists
+  file: path=/opt/solr/production/collection1/data/index state=directory owner=tomcat{{ tomcat_version }} group=tomcat{{ tomcat_version }}
+
+- name: ensure directory /opt/solr/production/collection1/lib exists
+  file: path=/opt/solr/production/collection1/lib state=directory owner=tomcat{{ tomcat_version }} group=tomcat{{ tomcat_version }}
+
+- name: unpack solr
+  command: tar -C /opt/build -xvzf /opt/src/solr-{{solr_version}}.tgz creates=/opt/build/solr-{{solr_version}}/dist/solr-{{solr_version}}.war
+
+- name: copy solr.war into place
+  command: cp /opt/build/solr-{{solr_version}}/dist/solr-{{solr_version}}.war /opt/solr/solr.war creates=/opt/solr/solr.war
+
+- name: copy logging libraries
+  command: rsync -av /opt/build/solr-{{solr_version}}/example/lib/ext/ /usr/share/tomcat{{ tomcat_version }}/lib/
+
+- name: setup solr core -- need to refine this step
+  command: rsync -av /opt/build/solr-{{solr_version}}/example/solr/ /opt/solr/production/ creates=/opt/solr/production/solr.xml
+
+- name: copy lucene libraries
+  command: rsync -av /opt/build/solr-{{ solr_version }}/contrib/analysis-extras/lucene-libs/ /opt/solr/production/collection1/lib/ creates=/opt/solr/production/collection1/lib/lucene-analyzers-icu-{{ solr_version }}.jar
+
+- name: copy icu4j library
+  command: rsync -av /opt/build/solr-{{ solr_version }}/contrib/analysis-extras/lib/ /opt/solr/production/collection1/lib/ creates=/opt/solr/production/collection1/lib/icu4j-53.1.jar
+
+- name: setup stopwords_en
+  command: cp /opt/solr/production/collection1/conf/lang/stopwords_en.txt /opt/solr/production/collection1/conf/stopwords_en.txt creates=/opt/solr/production/collection1/conf/stopwords_en.txt
+
+- name: install solrconfig
+  template: src=solrconfig-production.j2 dest=/opt/solr/production/collection1/conf/solrconfig.xml owner=tomcat{{ tomcat_version }} group=tomcat{{ tomcat_version }}
+  notify: restart tomcat
+
+- name: install solr schema (custom hydra)
+  template: src="{{item}}" dest=/opt/solr/production/collection1/conf/schema.xml owner=tomcat{{ tomcat_version }} group=tomcat{{ tomcat_version }}
+  with_first_found:
+   - files:
+      - solr-schema-hydra.xml.j2
+     paths: 
+      - ../templates
+  notify: restart tomcat
+
+- name: recursively set owner and group of /opt/solr to tomcat
+  file: path=/opt/solr recurse=yes state=directory owner=tomcat{{ tomcat_version }} group=tomcat{{ tomcat_version }}
+
+- name: install tomcat context
+  template: src=solr-production.j2 dest=/etc/tomcat{{ tomcat_version }}/Catalina/localhost/solr.xml owner=tomcat{{ tomcat_version }} group=tomcat{{ tomcat_version }}
+  notify: restart tomcat
+
+- name: start and enable tomcat server
+  service: name=tomcat{{ tomcat_version }} state=started enabled=yes

@@ -1,0 +1,6 @@
+# for single fedora server, add single server below
+# for two clustered fedora servers, add two below
+# make sure to set or unset 'fedora_clustered' variable
+
+[solr]
+solr1.internal.tld

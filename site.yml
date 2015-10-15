@@ -1,0 +1,5 @@
+---
+- hosts: solr
+  sudo: True
+  roles:
+    - solr
