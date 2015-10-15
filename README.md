@@ -1,4 +1,4 @@
-# ansible-fedora4
+# ansible-solr
 Ansible deployment of solr with hydra schema on Ubuntu 14.04
 
 ## Vagrant test :
